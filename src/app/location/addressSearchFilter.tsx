@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import axios from 'axios';
+import React, { useState } from "react";
+import axios from "axios";
 import { Location } from "@/types/location";
 
 interface Props {
@@ -35,7 +35,7 @@ const LocationForm: React.FC<Props> = ({ onClose, refreshTable, editData, setEdi
         const response = await axios.get(`https://nominatim.openstreetmap.org/search?q=${value}&format=json&addressdetails=1`);
         setAddressSuggestions(response.data);
       } catch (error) {
-        console.error('Error fetching address suggestions:', error);
+        console.error(`Error fetching address suggestions:`, error);
       }
     } else {
       setAddressSuggestions([]);
@@ -61,7 +61,7 @@ const LocationForm: React.FC<Props> = ({ onClose, refreshTable, editData, setEdi
           const response = await axios.post(`https://nectar-101-backend.vercel.app/api/v1/location/${editData._id}`, formData);
           setEditData(null);
         } else {
-          const response = await axios.post('https://nectar-101-backend.vercel.app/api/v1/location', formData);
+          const response = await axios.post(`https://nectar-101-backend.vercel.app/api/v1/location`, formData);
         }
         clearFormFields();
         onClose();

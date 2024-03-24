@@ -132,7 +132,7 @@ const Profile = () => {
   <div className="max-w-3xl mx-auto mt-8">
     <h2 className="mb-4 text-2xl font-semibold text-black dark:text-white">About Me</h2>
     <p className="text-lg text-gray-700 dark:text-gray-300">
-      Hi there! I'm Abdul Hadhi, a passionate web developer with expertise in React.js and Node.js. With over two years of experience, I've had the privilege of working on various projects, gaining valuable skills in both frontend and backend development. My strong problem-solving abilities and dedication to delivering high-quality code make me a valuable asset to any development team.
+      Hi there!, a passionate web developer with expertise in React.js and Node.js. With over two years of experience, I had the privilege of working on various projects, gaining valuable skills in both frontend and backend development. My strong problem-solving abilities and dedication to delivering high-quality code make me a valuable asset to any development team.
     </p>
   </div>
 
