@@ -12,9 +12,9 @@ export const metadata: Metadata = {
 };
 
 const Main = () => {
-  const [locationData, setLocationData] = useState<Location[]>([]); // Provide the type for locationData
+  const [locationData, setLocationData] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null); // Define the type for error
+  const [error, setError] = useState<string | null>(null); 
   const [showAddLocationForm, setShowAddLocationForm] = useState(false);
   const [editData, setEditData] = useState<Location | null>(null);
 
