@@ -241,3 +241,7 @@ input[type="search"]::-webkit-search-cancel-button {
 [x-cloak] {
     display: none !important;
 }
+
+.map-container{
+    height: 400px;
+}

@@ -2,17 +2,18 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { Location } from "@/types/location";
 import MapComponent from './mapComponent'
+import GMapComponent from './mapComponentGoogle'
 
+import { FaSearch } from 'react-icons/fa'
 interface Props {
   onClose: () => void;
   refreshTable: () => void;
   editData: Location | null;
   setEditData: React.Dispatch<React.SetStateAction<Location | null>>;
 }
-interface Prediction {
-  description: string;
+interface NominatimResult {
+  display_name: string;
 }
-
 const LocationForm: React.FC<Props> = ({ onClose, refreshTable, editData, setEditData }) => {
   const isEditMode = !!editData;
 
@@ -26,7 +27,8 @@ const LocationForm: React.FC<Props> = ({ onClose, refreshTable, editData, setEdi
     NickName: "",
     Address: "",
   });
-  const [searchResults, setSearchResults] = useState<string[]>([]); // State to hold search results
+  const [searchResults, setSearchResults] = useState<string[]>([]); 
+  const [showMapComponent, setShowMapComponent] = useState<boolean>(false); 
 
   React.useEffect(() => {
     clearFormFields();
@@ -51,7 +53,10 @@ const LocationForm: React.FC<Props> = ({ onClose, refreshTable, editData, setEdi
       [name]: value
     }));
   };
-
+  const toggleMapComponent = () => {
+    clearFormFields();
+    setShowMapComponent(prevState => !prevState);
+  };
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (validateForm()) {
@@ -108,10 +113,12 @@ const LocationForm: React.FC<Props> = ({ onClose, refreshTable, editData, setEdi
       Latitude: lat,
       Longitude: lng
     }));
-
+  
     try {
-      const response = await axios.get(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`);
-      const address = response.data.results[0].formatted_address;
+      const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`;
+      const response = await axios.get(url);
+      const address = response.data.display_name;
+  
       setFormData(prevData => ({
         ...prevData,
         Address: address
@@ -120,38 +127,41 @@ const LocationForm: React.FC<Props> = ({ onClose, refreshTable, editData, setEdi
       console.error("Error fetching address:", error);
       alert("Failed to fetch address. Please try again later.");
     }
-  };
+  };  
 
-  const handleAddressSearch = (searchText: string) => {
-    const autocompleteService = new window.google.maps.places.AutocompleteService();
-  
-    autocompleteService.getPlacePredictions({ input: searchText }, (predictions, status) => {
-      if (status === window.google.maps.places.PlacesServiceStatus.OK && predictions) {
-        const formattedPredictions: Prediction[] = predictions.map(prediction => ({
-          description: prediction.description
-        }));
-        setSearchResults(formattedPredictions.map(prediction => prediction.description));
-      } else {
-        console.error("Error searching address:", status);
+  const handleAddressSearch = async (searchText: string) => {
+    try {
+      const response = await axios.get<NominatimResult[]>(`https://nominatim.openstreetmap.org/search?format=json&q=${searchText}`);
+      
+      if (response.data.length === 0) {
+        throw new Error('No results found for the search text');
       }
-    });
+      
+      const formattedPredictions = response.data.map(result => result.display_name);
+      setSearchResults(formattedPredictions);
+    } catch (error) {
+      console.error("Error searching address:", error);
+    }
   };
   
   
 
   const handleAddressSelect = async (selectedAddress: string) => {
     try {
-      const response = await axios.get(`https://maps.googleapis.com/maps/api/geocode/json?address=${selectedAddress}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`);
-      const results = response.data.results;
-      const firstResult = results[0];
-      const { formatted_address, geometry } = firstResult;
-      const { lat, lng } = geometry.location;
+      const response = await axios.get(`https://nominatim.openstreetmap.org/search?format=json&q=${selectedAddress}`);
+      
+      if (response.data.length === 0) {
+        throw new Error('No results found for the selected address');
+      }
+      
+      const firstResult = response.data[0];
+      const { display_name, lat, lon } = firstResult;
   
       setFormData(prevData => ({
         ...prevData,
-        Address: formatted_address,
-        Latitude: lat,
-        Longitude: lng
+        Address: display_name,
+        Latitude: Number(lat),
+        Longitude: Number(lon)
       }));
   
       setSearchResults([]); 
@@ -176,7 +186,8 @@ const LocationForm: React.FC<Props> = ({ onClose, refreshTable, editData, setEdi
   };
 
   return (
-    <div className="grid grid-cols-1 gap-9 sm:grid-cols-2">
+    <div className="grid grid-cols-1 gap-9 sm:grid-cols-1">
+      
       <div className="flex flex-col gap-9">
         <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
           <div className="border-b border-stroke px-6.5 py-4 dark:border-strokedark">
@@ -188,37 +199,41 @@ const LocationForm: React.FC<Props> = ({ onClose, refreshTable, editData, setEdi
             </h5>
           </div>
           <form onSubmit={handleSubmit}>
-            <div className="p-6.5">
-              <div className="mb-4.5 flex flex-col gap-6">
-                <div className="w-full">
-                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                    Nick name
+            <div className="p-6">
+              <div className="mb-4 flex flex-wrap">
+                <div className="w-1/3 p-2 pl-0">
+                  <label className="mb-2 block text-sm font-medium text-black dark:text-white">
+                    Nickname
                   </label>
                   <input
                     type="text"
                     name="NickName"
                     value={formData.NickName}
                     onChange={handleChange}
-                    placeholder="Enter nick name"
+                    placeholder="Enter Nickname"
                     className={`${errors.NickName ? 'border-rose-500' : ''} w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary ${errors.NickName ? "border-red-500" : ""}`}
                   />
-                  {errors.NickName && <span className="pl-1 text-rose-500 text-xs">{errors.NickName}</span>}
+                  {errors.NickName && <span className="pl-1 font-bold animate-pulse text-rose-700 text-xs">{errors.NickName}</span>}
                 </div>
 
-                <div className="w-full relative">
-                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                <div className="w-2/3 relative p-2 pr-0">
+                  <label className="mb-2 block text-sm font-medium text-black dark:text-white">
                     Address
                   </label>
-                  <input
-                    type="text"
-                    name="Address"
-                    value={formData.Address}
-                    onChange={(e) => { handleChange(e); handleAddressSearch(e.target.value); }}
-                    placeholder="Enter Address"
-                    className={`${errors.Address ? 'border-rose-500' : ''} w-full rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary ${errors.Address ? "border-red-500" : ""}`}
-                  />
-                 
-                 {errors.Address && <span className="pl-1 text-rose-500 text-xs">{errors.Address}</span>}
+                  <div className="relative">
+                    <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                      <FaSearch className="text-gray-300" />
+                    </span>
+                    <input
+                      type="text"
+                      name="Address"
+                      value={formData.Address}
+                      onChange={(e) => { handleChange(e); handleAddressSearch(e.target.value); }}
+                      placeholder="Search Address..."
+                      className={`${errors.Address ? 'border-rose-500' : ''} w-full pl-10 pr-5 rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary ${errors.Address ? "border-red-500" : ""}`}
+                    />
+                  </div>
+                  {errors.Address && <span className="pl-1 font-bold animate-pulse text-rose-700 text-xs">{errors.Address}</span>}
 
                   {searchResults.length > 0 && (
                     <ul className="absolute left-0 mt-1 w-full bg-white rounded shadow-lg z-10">
@@ -234,9 +249,25 @@ const LocationForm: React.FC<Props> = ({ onClose, refreshTable, editData, setEdi
                     </ul>
                   )}
                 </div>
+                <div  className='w-full'>
+      <button className='float-right p-1 rounded-full mb-1 px-2 hover:bg-indigo-600 text-xs bg-slate-400 text-white' onClick={toggleMapComponent}>Toggle Map View</button>
+      <div className='w-full'>
+      {showMapComponent ? (
+        <MapComponent
+          markedloc={{ lat: formData.Latitude, lng: formData.Longitude }}
+          sendData={mapPinUpdated}
+        />
+      ) : (
+        <GMapComponent
+          markedloc={{ lat: formData.Latitude, lng: formData.Longitude }}
+          sendData={mapPinUpdated}
+        />
+      )}
+    </div>
+    </div>
               </div>
 
-              <div className="form-group w-full flex justify-end">
+              <div className="form-group w-full flex justify-end mt-2">
                 {!isEditMode ? (
                   <button type="button" onClick={handleClear} className="border border-stroke mr-4 px-4 py-2 rounded-lg text-black dark:text-white hover:bg-gray-200 dark:hover:bg-gray-800">
                     Clear
@@ -257,24 +288,6 @@ const LocationForm: React.FC<Props> = ({ onClose, refreshTable, editData, setEdi
               </div>
             </div>
           </form>
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-9">
-        <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
-          <div className="border-b border-stroke px-6.5 py-4 dark:border-strokedark">
-            <h3 className="font-medium text-black dark:text-white">
-              Map View
-            </h3>
-          </div>
-          <div className="flex flex-col gap-5.5 p-6.5">
-            <div>
-              <MapComponent
-                markedloc={{ "lat": formData.Latitude, "lng": formData.Longitude }}
-                sendData={mapPinUpdated}
-              />
-            </div>
-          </div>
         </div>
       </div>
     </div>

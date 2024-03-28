@@ -1,82 +1,63 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api';
+import React, { useState, useEffect } from 'react';
+import mapboxgl from 'mapbox-gl';
 
 interface Props {
   markedloc: { lat: number; lng: number } | null;
   sendData: (lat: number, lng: number) => void;
 }
 
-const containerStyle = {
-  width: '100%',
-  height: '60vh'
-};
-
-const center = {
-  lat: 11.004556,
-  lng: 76.961632
-};
-
-const defaultZoom = 16;
-
 const MapComponent: React.FC<Props> = ({ markedloc, sendData }) => {
-  const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
-
-  const { isLoaded } = useJsApiLoader({
-    id: 'google-map-script',
-    googleMapsApiKey: googleMapsApiKey as string 
+  const [map, setMap] = useState<mapboxgl.Map | null>(null);
+  const [newPlace, setNewPlace] = useState({
+    lat: 0,
+    long: 0,
   });
 
-  const [map, setMap] = useState<any>(null);
-  const [markers, setMarkers] = useState<{ lat: number; lng: number }[]>([]);
-  const markerRef = useRef<any>(null);
-
   useEffect(() => {
+    mapboxgl.accessToken = 'pk.eyJ1IjoiYWJkdWxoYWRoaSIsImEiOiJjbHVhanpvc2Ywa3E4Mml0NWNqM3ZmZmN1In0.IIRx4xkxI1DYKZn-f9vJTA';
 
-    if (markedloc && markedloc.lat>0) {
-      setMarkers([markedloc]);
-    }else{
-      setMarkers([{"lat": 13.067439,"lng": 80.237617}]);
+    const initializeMap = () => {
+      const mapInstance = new mapboxgl.Map({
+        container: 'map-container',
+        style: 'mapbox://styles/abdulhadhi/cluaklpzc00vx01pr7oo3ag6g',
+        center: [76.961632, 11.004556],
+        zoom: 10
+      });
+
+      mapInstance.on('load', () => {
+        setMap(mapInstance);
+      });
+    };
+
+    if (!map) {
+      initializeMap();
     }
 
-  }, [markedloc]);
+    return () => {
+      if (map) {
+        map.remove();
+      }
+    };
+  }, [map]);
 
-  const onLoad = useCallback(function callback(map: any) {
-    const bounds = new window.google.maps.LatLngBounds();
-    markers.forEach(marker => bounds.extend(marker));
-    map.fitBounds(bounds);
-    setMap(map);
-  }, [markers]);
+  const handleMapClick: React.MouseEventHandler<HTMLDivElement> = (e) => {
+    if (sendData && map) {
+      const rect = (e.target as HTMLElement).getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
 
-  const onUnmount = useCallback(function callback(map: any) {
-    setMap(null);
-  }, []);
-
-  const handleMapClick = (event: any) => {
-    const newMarker = { lat: event.latLng.lat(), lng: event.latLng.lng() };
-    setMarkers([newMarker]); 
-    sendData(newMarker.lat, newMarker.lng);
+      const lngLat = map.unproject([x, y]);
+      sendData(lngLat.lat, lngLat.lng);
+    }
   };
 
-  return (
-    <div className="w-full">
-      {isLoaded ? (
-        <GoogleMap
-          mapContainerStyle={containerStyle}
-          onLoad={onLoad}
-          onUnmount={onUnmount}
-          onClick={(e) => handleMapClick(e)}
-          center={markers.length > 0 ? markers[0] : center} 
-          zoom={markers.length > 0 ? defaultZoom : 10}
-        >
-          {markers.map((marker, index) => (
-            <Marker key={index} position={marker} />
-          ))}
-        </GoogleMap>
-      ) : (
-        <div>Loading...</div>
-      )}
-    </div>
-  );
+  useEffect(() => {
+    if (map && markedloc) {
+      map.flyTo({ center: [markedloc.lng, markedloc.lat], zoom: 10 });
+    }
+  }, [ markedloc]);
+
+  return <div id="map-container" style={{ width: '100%', height: '40vh' }} onClick={handleMapClick} />;
 };
 
 export default MapComponent;
