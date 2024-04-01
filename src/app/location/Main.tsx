@@ -16,6 +16,7 @@ const Main = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null); 
   const [showAddLocationForm, setShowAddLocationForm] = useState(false);
+  //new changes
   const [editData, setEditData] = useState<Location | null>(null);
 
   useEffect(() => {
