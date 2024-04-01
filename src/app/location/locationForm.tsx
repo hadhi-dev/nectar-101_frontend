@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Location } from "@/types/location";
 import MapComponent from './mapComponent'
 import GMapComponent from './mapComponentGoogle'
-
+import { useDebouncedCallback } from 'use-debounce';
 import { FaSearch } from 'react-icons/fa'
 interface Props {
   onClose: () => void;
@@ -53,6 +53,7 @@ const LocationForm: React.FC<Props> = ({ onClose, refreshTable, editData, setEdi
       [name]: value
     }));
   };
+  
   const toggleMapComponent = () => {
     clearFormFields();
     setShowMapComponent(prevState => !prevState);
@@ -185,6 +186,19 @@ const LocationForm: React.FC<Props> = ({ onClose, refreshTable, editData, setEdi
     setSearchResults([]); 
   };
 
+ const debounced = useDebouncedCallback(
+    // function
+    (value) => {
+      setFormData(prevData => ({
+        ...prevData,
+        Address: value
+      }));
+      handleAddressSearch(value)
+    },
+    // delay in ms
+    300
+  );
+
   return (
     <div className="grid grid-cols-1 gap-9 sm:grid-cols-1">
       
@@ -228,7 +242,8 @@ const LocationForm: React.FC<Props> = ({ onClose, refreshTable, editData, setEdi
                       type="text"
                       name="Address"
                       value={formData.Address}
-                      onChange={(e) => { handleChange(e); handleAddressSearch(e.target.value); }}
+                              onChange={(e) => debounced(e.target.value)}
+                      // onChange={(e) => { handleChange(e); handleAddressSearch(e.target.value); }}
                       placeholder="Search Address..."
                       className={`${errors.Address ? 'border-rose-500' : ''} w-full pl-10 pr-5 rounded border-[1.5px] border-stroke bg-transparent px-5 py-3 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary ${errors.Address ? "border-red-500" : ""}`}
                     />
